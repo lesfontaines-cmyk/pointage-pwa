@@ -949,6 +949,7 @@ function renderPlages() {
 // ═══════════════════════════════════════════════
 function pointePrise() {
   const h=nowHHMM();
+  const realDate=new Date(_virtualNow).toISOString().split('T')[0]; // date virtuelle x50
   let idx=S.plages.findIndex(p=>!p.debut);
   if(idx<0){S.plages.push({debut:'',fin:''});idx=S.plages.length-1;}
   S.plages[idx].debut=h; S.enPoste=true; _priseTsMs=virtualNow();
@@ -1017,6 +1018,8 @@ async function cloturerJournee() {
   const plages=S.plages
     .filter(p=>p.debut&&p.fin)
     .map(p=>{return {debut:arrondiSup(p.debut),fin:arrondiInf(p.fin)}});
+  // Date réelle du pointage (stockée au moment de la prise)
+  const pointageDate = S.plages.find(p=>p.date)?.date || new Date().toISOString().split('T')[0];
 
   if(!plages.length){toast('Aucune plage complète','error');return;}
 
@@ -1045,7 +1048,8 @@ async function cloturerJournee() {
         email:    CFG.email,
         password: CFG.password,
         url:      CFG.url,
-        plages:   plages
+        plages:   plages,
+        date:     pointageDate
       }),
       signal: AbortSignal.timeout(120000) // 2 min max
     });
