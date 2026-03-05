@@ -760,6 +760,10 @@
   <div class="section-title">Plages horaires</div>
   <div class="section-hint" id="dateJour">—</div>
 </div>
+<div style="padding:0 24px 8px">
+  <label style="font-size:13px;color:#888;display:block;margin-bottom:4px">Date</label>
+  <select id="dateSelect" onchange="setDate(this.value)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:15px;background:white"></select>
+</div>
 <div class="plages-wrap" id="plagesList"></div>
 <div style="padding:0 24px">
   <button class="add-plage-btn" onclick="addPlage()">+ Ajouter une plage</button>
@@ -838,7 +842,7 @@
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-let S   = { plages:[{debut:'',fin:''}], history:[], enPoste:false, cloture:false };
+let S   = { plages:[{debut:'',fin:''}], history:[], enPoste:false, cloture:false, date:'' };
 let CFG = { email:'', password:'', url:'', server:'' };
 
 function pad(n) { return String(n).padStart(2,'0'); }
@@ -849,7 +853,7 @@ function arrondiInf(h) { if(!h)return''; const[hh,mm]=h.split(':').map(Number); 
 // ═══════════════════════════════════════════════
 // PERSISTANCE
 // ═══════════════════════════════════════════════
-function storKey() { return 'eco_'+new Date().toISOString().slice(0,10); }
+function storKey() { return 'eco_'+(S.date||new Date(_virtualNow).toISOString().slice(0,10)); }
 function save() {
   const d=JSON.stringify(S);
   try{localStorage.setItem(storKey(),d);}catch(e){}
@@ -859,7 +863,7 @@ function loadState() {
   let d=null;
   try{d=JSON.parse(localStorage.getItem(storKey())||'null');}catch(e){}
   if(!d)try{d=JSON.parse(sessionStorage.getItem(storKey())||'null');}catch(e){}
-  if(d){ S.plages=d.plages||[{debut:'',fin:''}]; S.history=d.history||[]; S.enPoste=d.enPoste||false; S.cloture=d.cloture||false; }
+  if(d){ S.plages=d.plages||[{debut:'',fin:''}]; S.history=d.history||[]; S.enPoste=d.enPoste||false; S.cloture=d.cloture||false; S.date=d.date||''; }
 }
 function loadSettings() {
   try{CFG.email=localStorage.getItem('eco_email')||''; CFG.password=localStorage.getItem('eco_pwd')||''; CFG.url=localStorage.getItem('eco_url')||'https://drive.ecollaboratrice.com/Paie/VariablePaie/IndexSalarie?idContrat=186674&mois=03&annee=2026'; CFG.server=localStorage.getItem('eco_server')||'https://pointage-serveur-production.up.railway.app';}catch(e){}
@@ -928,6 +932,26 @@ function removePlage(i)   { if(S.plages.length<=1){toast('Au moins une plage req
 function setField(i,f,v)  { S.plages[i][f]=v; renderPlages(); save(); updateUI(); }
 function setNow(i,f)      { S.plages[i][f]=nowHHMM(); renderPlages(); save(); updateUI(); }
 
+function genDateOptions() {
+  // Générer les 31 jours du mois en cours
+  const now = new Date(_virtualNow);
+  const yr = now.getFullYear();
+  const mo = now.getMonth();
+  const today = now.toISOString().slice(0,10);
+  const cur = S.date || today;
+  const daysInMonth = new Date(yr, mo+1, 0).getDate();
+  const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  let opts = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(yr, mo, d);
+    const iso = dt.toISOString().slice(0,10);
+    const label = jours[dt.getDay()] + ' ' + String(d).padStart(2,'0') + '/' + String(mo+1).padStart(2,'0');
+    opts += `<option value="${iso}"${cur===iso?' selected':''}>${label}</option>`;
+  }
+  return opts;
+}
+function setDate(v) { S.date=v; save(); }
+
 function genOptions(val) {
   let opts = '<option value="">--</option>';
   for (let i = 0; i < 96; i++) {
@@ -940,6 +964,9 @@ function genOptions(val) {
 }
 
 function renderPlages() {
+  // Date
+  const dateEl = document.getElementById('dateSelect');
+  if (dateEl) dateEl.innerHTML = genDateOptions();
   document.getElementById('plagesList').innerHTML=S.plages.map((p,i)=>{
     return `<div class="plage-card">
       <div class="plage-card-head">
@@ -965,7 +992,7 @@ function renderPlages() {
 // ═══════════════════════════════════════════════
 function pointePrise() {
   const h=nowHHMM();
-  const realDate=new Date(_virtualNow).toISOString().split('T')[0]; // date virtuelle x50
+  const realDate=S.date||new Date(_virtualNow).toISOString().split('T')[0]; // date sélectionnée ou virtuelle
   let idx=S.plages.findIndex(p=>!p.debut);
   if(idx<0){S.plages.push({debut:'',fin:''});idx=S.plages.length-1;}
   S.plages[idx].debut=h; S.enPoste=true; _priseTsMs=virtualNow();
@@ -1035,7 +1062,7 @@ async function cloturerJournee() {
     .filter(p=>p.debut&&p.fin)
     .map(p=>{return {debut:arrondiSup(p.debut),fin:arrondiInf(p.fin)}});
   // Date réelle du pointage (stockée au moment de la prise)
-  const pointageDate = S.plages.find(p=>p.date)?.date || new Date().toISOString().split('T')[0];
+  const pointageDate = S.date || S.plages.find(p=>p.date)?.date || new Date().toISOString().split('T')[0];
 
   if(!plages.length){toast('Aucune plage complète','error');return;}
 
