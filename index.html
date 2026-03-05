@@ -293,6 +293,15 @@
     margin-bottom: 28px;
   }
   .add-plage-btn:hover { border-color: var(--gold-lt); color: var(--gold); }
+  .time-select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    background: white;
+    cursor: pointer;
+    flex: 1;
+  }
 
   /* ─── BOUTONS POINTAGE ────────────────────── */
   .pointage-row {
@@ -919,10 +928,19 @@ function removePlage(i)   { if(S.plages.length<=1){toast('Au moins une plage req
 function setField(i,f,v)  { S.plages[i][f]=v; renderPlages(); save(); updateUI(); }
 function setNow(i,f)      { S.plages[i][f]=nowHHMM(); renderPlages(); save(); updateUI(); }
 
+function genOptions(val) {
+  let opts = '<option value="">--</option>';
+  for (let i = 0; i < 96; i++) {
+    const h = String(Math.floor(i*15/60)).padStart(2,'0');
+    const m = String((i*15)%60).padStart(2,'0');
+    const v = h+':'+m;
+    opts += `<option value="${v}"${val===v?' selected':''}>${v}</option>`;
+  }
+  return opts;
+}
+
 function renderPlages() {
   document.getElementById('plagesList').innerHTML=S.plages.map((p,i)=>{
-    const da=arrondiSup(p.debut),fa=arrondiInf(p.fin);
-    const ds=!p.debut||da===p.debut,fs=!p.fin||fa===p.fin;
     return `<div class="plage-card">
       <div class="plage-card-head">
         <span class="plage-label">${S.plages.length>1?'Plage '+(i+1):'Horaires'}</span>
@@ -930,15 +948,13 @@ function renderPlages() {
       </div>
       <div class="time-row">
         <span class="time-row-label">Début</span>
-        <input class="time-input" type="time" value="${p.debut}" oninput="setField(${i},'debut',this.value)">
+        <select class="time-select" onchange="setField(${i},'debut',this.value)">${genOptions(p.debut)}</select>
         <button class="now-btn" onclick="setNow(${i},'debut')">Maint.</button>
-        <span class="arrondi-badge ${ds?'same':''}">${p.debut?da:'—'}</span>
       </div>
       <div class="time-row">
         <span class="time-row-label">Fin</span>
-        <input class="time-input" type="time" value="${p.fin}" oninput="setField(${i},'fin',this.value)">
+        <select class="time-select" onchange="setField(${i},'fin',this.value)">${genOptions(p.fin)}</select>
         <button class="now-btn" onclick="setNow(${i},'fin')">Maint.</button>
-        <span class="arrondi-badge ${fs?'same':''}">${p.fin?fa:'—'}</span>
       </div>
     </div>`;
   }).join('');
